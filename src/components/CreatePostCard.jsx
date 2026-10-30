@@ -1,114 +1,60 @@
 import React, { useState } from 'react';
 
-export default function CreatePostCard({ onSubmit, cardStyles }) {
+function CreatePostCard({ currentUser, onCreatePost }) {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('General');
-  const [isPoll, setIsPoll] = useState(false);
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOptions, setPollOptions] = useState(['', '']);
-
-  const handleAddOption = () => {
-    if (pollOptions.length < 4) setPollOptions([...pollOptions, '']);
-  };
-
-  const handleOptionChange = (index, value) => {
-    const updated = [...pollOptions];
-    updated[index] = value;
-    setPollOptions(updated);
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!content.trim()) return;
-
-    onSubmit({
+    
+    onCreatePost({
       content,
       category,
-      isPoll,
-      pollQuestion: isPoll ? pollQuestion : '',
-      pollOptions: isPoll ? pollOptions.filter(opt => opt.trim() !== '') : []
+      title: 'Developer Update'
     });
 
     setContent('');
-    setIsPoll(false);
-    setPollQuestion('');
-    setPollOptions(['', '']);
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`p-6 rounded-3xl border transition-all ${cardStyles}`}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-base font-extrabold tracking-tight flex items-center gap-2">
-          <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 text-sm">✍️</span> Share Update or Poll
+    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <span>🚀</span> Share Update or Poll
         </h2>
-        
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsPoll(!isPoll)}
-            className={`text-xs px-3 py-1.5 rounded-xl font-bold transition border ${isPoll ? 'bg-purple-600 text-white border-purple-500' : 'bg-black/20 border-indigo-500/30 text-indigo-300'}`}
-          >
-            📊 {isPoll ? 'Switch to Post' : 'Create Poll'}
-          </button>
-
-          <select 
-            value={category} 
-            onChange={(e) => setCategory(e.target.value)}
-            className="text-xs px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-black/20 font-semibold focus:outline-none"
-          >
-            <option value="General">💬 General</option>
-            <option value="React">⚛️ React</option>
-            <option value="NodeJS">🟢 NodeJS</option>
-            <option value="Database">🗄️ Database</option>
-            <option value="Showcase">🚀 Showcase</option>
-          </select>
-        </div>
+        <select 
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="bg-slate-900 text-xs border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 focus:outline-none"
+        >
+          <option value="General">General</option>
+          <option value="React">React</option>
+          <option value="NodeJS">NodeJS</option>
+          <option value="Database">Database</option>
+          <option value="Showcase">Showcase</option>
+        </select>
       </div>
 
       <textarea
         rows="3"
+        placeholder="What are you building today?"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder={isPoll ? "Write context for your community poll..." : "What architectural breakthrough or bug did you conquer today?"}
-        className="w-full p-4 rounded-2xl border border-gray-700/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-black/10 text-sm resize-none transition mb-4"
+        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
       />
 
-      {isPoll && (
-        <div className="space-y-3 mb-4 p-4 rounded-2xl border border-purple-500/30 bg-purple-500/5">
-          <input
-            type="text"
-            value={pollQuestion}
-            onChange={(e) => setPollQuestion(e.target.value)}
-            placeholder="Ask a technical question (e.g. Vite vs Webpack?)"
-            className="w-full px-3 py-2 text-xs rounded-xl border bg-black/20 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-          {pollOptions.map((opt, idx) => (
-            <input
-              key={idx}
-              type="text"
-              value={opt}
-              onChange={(e) => handleOptionChange(idx, e.target.value)}
-              placeholder={`Option ${idx + 1}`}
-              className="w-full px-3 py-2 text-xs rounded-xl border bg-black/20 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          ))}
-          {pollOptions.length < 4 && (
-            <button type="button" onClick={handleAddOption} className="text-xs text-purple-400 font-bold hover:underline">
-              + Add Option
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="flex justify-between items-center">
-        <span className="text-xs opacity-50 font-medium">Synced with MongoDB Atlas</span>
-        <button 
-          type="submit" 
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-90 text-white font-bold text-sm rounded-2xl shadow-lg transition transform active:scale-95"
+      <div className="flex justify-between items-center pt-2">
+        <span className="text-[11px] text-slate-500">Synced with MongoDB Atlas</span>
+        <button
+          onClick={handleSubmit}
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold px-5 py-2 rounded-xl text-xs shadow-lg transition-all"
         >
-          {isPoll ? 'Publish Poll 📊' : 'Publish Post 🚀'}
+          Publish Post 🚀
         </button>
       </div>
-    </form>
+    </div>
   );
 }
+
+export default CreatePostCard;

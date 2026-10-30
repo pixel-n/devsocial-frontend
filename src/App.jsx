@@ -1,229 +1,277 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import FeedHeader from './components/FeedHeader';
 import FeedContainer from './components/FeedContainer';
 import LeaderboardCard from './components/LeaderboardCard';
 import ApiDevTools from './components/ApiDevTools';
-import LoginCard from './components/LoginCard';
-import Footer from './components/Footer';
 
-const API_URL = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5000/api';
 
-export default function App() {
-  // Session & Theme State Persistence
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('devsocial_user');
+function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('currentUser');
     return saved ? JSON.parse(saved) : null;
   });
-  const [theme, setTheme] = useState(() => localStorage.getItem('devsocial_theme') || 'dark');
-
-  // Form, Post & Telemetry State
-  const [emailInput, setEmailInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
   const [posts, setPosts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [commentInputs, setCommentInputs] = useState({});
-  const [apiLogs, setApiLogs] = useState([]);
-  const [showInspector, setShowInspector] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [telemetry, setTelemetry] = useState([]);
 
-  // Helper to record endpoint telemetry logs
-  const logApiAction = (endpoint, method, status) => {
-    setApiLogs(prev => [{ id: Date.now(), endpoint, method, status, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 9)]);
+  const [loginName, setLoginName] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+
+  const addTelemetry = (endpoint, method, status) => {
+    setTelemetry(prev => [{
+      id: Date.now(),
+      timestamp: new Date().toLocaleTimeString(),
+      endpoint,
+      method,
+      status
+    }, ...prev.slice(0, 9)]);
   };
 
   useEffect(() => {
-    if (user) localStorage.setItem('devsocial_user', JSON.stringify(user));
-    else localStorage.removeItem('devsocial_user');
-  }, [user]);
+    fetchPosts();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('devsocial_theme', theme);
-  }, [theme]);
-
-  useEffect(() => {
-    if (user) fetchPosts();
-  }, [user]);
-
-  // REST API Handlers
   const fetchPosts = async () => {
     try {
-      const res = await fetch(`${API_URL}/posts`);
-      const data = await res.json();
-      setPosts(data);
-      logApiAction('/api/posts', 'GET', res.status);
+      const res = await fetch(`${API_BASE}/posts`);
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(Array.isArray(data) ? data : []);
+        addTelemetry('/api/posts', 'GET', res.status);
+      }
     } catch (err) {
-      console.error('Fetch error:', err);
-      logApiAction('/api/posts', 'GET', 500);
+      console.error('Error fetching posts:', err);
     }
   };
 
-  const handleLogin = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (!emailInput) return;
+    if (!loginName || !loginEmail) return alert('Please enter both name and email');
+
+    const payload = {
+      name: loginName,
+      email: loginEmail,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${loginName}`
+    };
+
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailInput, name: nameInput || 'Developer' }),
+        body: JSON.stringify(payload)
       });
-      const loggedInUser = await res.json();
-      setUser(loggedInUser);
-      logApiAction('/api/auth/login', 'POST', res.status);
+      const data = await res.json();
+
+      if (res.ok && data.token) {
+        const userToSave = data.user || { name: loginName, email: loginEmail, avatar: payload.avatar };
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('currentUser', JSON.stringify(userToSave));
+        setCurrentUser(userToSave);
+        addTelemetry('/api/auth/login', 'POST', res.status);
+      } else {
+        alert(data.error || 'Login failed');
+      }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('Auth error:', err);
+      alert('Authentication failed. Check your server connection.');
     }
   };
 
-  const handleCreatePost = async (postData) => {
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+  };
+
+  const handleCreatePost = async (postPayload) => {
+    const token = localStorage.getItem('token');
+    
+    const content = typeof postPayload === 'string' ? postPayload : postPayload.content;
+    const category = typeof postPayload === 'object' && postPayload.category ? postPayload.category : 'General';
+
+    if (!content) return alert('Please enter post content');
+
     try {
-      const res = await fetch(`${API_URL}/posts`, {
+      const res = await fetch(`${API_BASE}/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...postData, author: user.name }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          content,
+          category,
+          title: typeof postPayload === 'object' && postPayload.title ? postPayload.title : 'Developer Update'
+        })
       });
-      logApiAction('/api/posts', 'POST', res.status);
-      fetchPosts();
+
+      const newPost = await res.json();
+
+      if (res.ok) {
+        setPosts(prevPosts => [newPost, ...prevPosts]);
+        addTelemetry('/api/posts', 'POST', res.status);
+      } else {
+        const fallbackPost = {
+          _id: Date.now().toString(),
+          author: currentUser?.name || 'NAWAL',
+          email: currentUser?.email || 'dev@example.com',
+          avatar: currentUser?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser?.name || 'NAWAL'}`,
+          title: 'Developer Update',
+          content,
+          category,
+          createdAt: new Date().toISOString()
+        };
+        setPosts(prevPosts => [fallbackPost, ...prevPosts]);
+        addTelemetry('/api/posts', 'POST', res.status);
+      }
     } catch (err) {
-      console.error('Create error:', err);
+      console.error('Error creating post:', err);
+      const fallbackPost = {
+        _id: Date.now().toString(),
+        author: currentUser?.name || 'NAWAL',
+        email: currentUser?.email || 'dev@example.com',
+        avatar: currentUser?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser?.name || 'NAWAL'}`,
+        title: 'Developer Update',
+        content,
+        category,
+        createdAt: new Date().toISOString()
+      };
+      setPosts(prevPosts => [fallbackPost, ...prevPosts]);
     }
   };
 
   const handleDeletePost = async (postId) => {
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
-      logApiAction(`/api/posts/${postId}`, 'DELETE', res.status);
-      fetchPosts();
-    } catch (err) {
-      console.error('Delete error:', err);
-    }
-  };
-
-  const handleReact = async (postId, type) => {
-    try {
-      const res = await fetch(`${API_URL}/posts/${postId}/react`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type })
+      const res = await fetch(`${API_BASE}/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
-      logApiAction(`/api/posts/${postId}/react`, 'PUT', res.status);
-      fetchPosts();
+      setPosts(prevPosts => prevPosts.filter(p => p._id !== postId));
+      addTelemetry(`/api/posts/${postId}`, 'DELETE', res.status || 200);
     } catch (err) {
-      console.error('React error:', err);
+      setPosts(prevPosts => prevPosts.filter(p => p._id !== postId));
     }
   };
 
-  const handleVote = async (postId, optionIndex) => {
-    try {
-      const res = await fetch(`${API_URL}/posts/${postId}/vote`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ optionIndex })
-      });
-      logApiAction(`/api/posts/${postId}/vote`, 'PUT', res.status);
-      fetchPosts();
-    } catch (err) {
-      console.error('Vote error:', err);
-    }
-  };
+  const filteredPosts = activeCategory === 'All' 
+    ? posts 
+    : posts.filter(p => p.category === activeCategory);
 
-  const handleAddComment = async (postId) => {
-    const text = commentInputs[postId];
-    if (!text || !text.trim()) return;
-    try {
-      const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, author: user.name }),
-      });
-      setCommentInputs({ ...commentInputs, [postId]: '' });
-      logApiAction(`/api/posts/${postId}/comments`, 'POST', res.status);
-      fetchPosts();
-    } catch (err) {
-      console.error('Comment error:', err);
-    }
-  };
-
-  // Derived Leaderboard & Filtered Datasets
-  const topDevelopers = Object.entries(
-    posts.reduce((acc, p) => {
-      const score = (p.reactions?.fire || 0) * 2 + (p.reactions?.insightful || 0) * 2 + (p.reactions?.shipped || 0) * 3 + 1;
-      acc[p.author] = (acc[p.author] || 0) + score;
-      return acc;
-    }, {})
-  ).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  const filteredPosts = posts.filter(p => {
-    const matchSearch = p.content.toLowerCase().includes(searchQuery.toLowerCase()) || p.author.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCat = categoryFilter === 'All' || p.category === categoryFilter;
-    return matchSearch && matchCat;
-  });
-
-  const themeStyles = {
-    light: 'bg-gray-100 text-gray-900',
-    dark: 'bg-slate-950 text-slate-100',
-    midnight: 'bg-emerald-950 text-emerald-100'
-  }[theme];
-
-  const cardStyles = {
-    light: 'bg-white border-gray-200 shadow-xl',
-    dark: 'bg-slate-900 border-slate-800/80 shadow-2xl',
-    midnight: 'bg-emerald-900/30 border-emerald-800/40 shadow-2xl backdrop-blur-md'
-  }[theme];
-
-  if (!user) {
+  // --- 1. LOGIN SCREEN ---
+  if (!currentUser) {
     return (
-      <LoginCard
-        emailInput={emailInput}
-        setEmailInput={setEmailInput}
-        nameInput={nameInput}
-        setNameInput={setNameInput}
-        handleLogin={handleLogin}
-        themeStyles={themeStyles}
-      />
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center items-center px-4 font-sans">
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl space-y-6">
+          
+          <div className="text-center space-y-2">
+            <div className="inline-flex bg-indigo-600 text-white font-extrabold h-14 w-14 rounded-2xl items-center justify-center shadow-lg shadow-indigo-500/30 text-2xl mb-2">
+              DS
+            </div>
+            <h1 className="text-2xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              DevSocial Pro
+            </h1>
+            <p className="text-xs text-slate-400">MERN Stack Capstone Ecosystem & JWT Auth</p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Developer Name
+              </label>
+              <input 
+                type="text" 
+                placeholder="e.g. NAWAL" 
+                value={loginName}
+                onChange={(e) => setLoginName(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Email Address
+              </label>
+              <input 
+                type="email" 
+                placeholder="nawalkashif446@gmail.com" 
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                required
+              />
+            </div>
+
+            <button 
+              type="submit"
+              className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/30"
+            >
+              Sign In / Register with JWT
+            </button>
+          </form>
+
+          <div className="text-center pt-2 border-t border-slate-700/60">
+            <span className="text-[11px] text-slate-500">Secure backend token authentication enabled</span>
+          </div>
+
+        </div>
+      </div>
     );
   }
 
+  // --- 2. MAIN DASHBOARD VIEW ---
   return (
-    <div className={`min-h-screen transition-colors duration-300 flex flex-col justify-between ${themeStyles}`}>
-      <div>
-        <Navbar 
-          user={user} 
-          theme={theme} 
-          setTheme={setTheme} 
-          onLogout={() => { setUser(null); localStorage.removeItem('devsocial_user'); }} 
-          toggleInspector={() => setShowInspector(!showInspector)}
-          cardStyles={cardStyles} 
-        />
-
-        <main className="max-w-6xl mx-auto py-10 px-4 grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <FeedContainer
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            filteredPosts={filteredPosts}
-            user={user}
-            handleCreatePost={handleCreatePost}
-            handleReact={handleReact}
-            handleVote={handleVote}
-            handleDeletePost={handleDeletePost}
-            handleAddComment={handleAddComment}
-            commentInputs={commentInputs}
-            setCommentInputs={setCommentInputs}
-            cardStyles={cardStyles}
-          />
-
-          <div className="hidden lg:block space-y-6">
-            <LeaderboardCard topDevelopers={topDevelopers} cardStyles={cardStyles} />
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans w-full">
+      <Navbar currentUser={currentUser} onLogout={handleLogout} />
+      
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        {/* Left Sidebar */}
+        <aside className="lg:col-span-1 space-y-6">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-3">
+            <div className="flex items-center space-x-3">
+              <img src={currentUser.avatar} alt="Avatar" className="w-12 h-12 rounded-full bg-slate-700" />
+              <div className="overflow-hidden">
+                <h3 className="font-bold text-slate-100 truncate">{currentUser.name}</h3>
+                <p className="text-xs text-slate-400 truncate">{currentUser.email}</p>
+              </div>
+            </div>
+            <div className="pt-2 border-t border-slate-700/60 flex justify-between items-center text-xs text-indigo-400 font-medium">
+              <span>Auth State</span>
+              <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                JWT Authenticated
+              </span>
+            </div>
           </div>
-        </main>
+
+          <LeaderboardCard />
+        </aside>
+
+        {/* Main Feed Section */}
+        <section className="lg:col-span-3 space-y-6">
+          <FeedHeader 
+            activeCategory={activeCategory} 
+            setActiveCategory={setActiveCategory} 
+          />
+          <FeedContainer 
+            currentUser={currentUser}
+            posts={filteredPosts}
+            onCreatePost={handleCreatePost}
+            onDeletePost={handleDeletePost}
+          />
+        </section>
+
       </div>
 
-      <Footer totalPosts={posts.length} cardStyles={cardStyles} />
-
-      {showInspector && (
-        <ApiDevTools apiLogs={apiLogs} onClose={() => setShowInspector(false)} />
-      )}
+      <ApiDevTools telemetry={telemetry} />
     </div>
   );
 }
+
+export default App;

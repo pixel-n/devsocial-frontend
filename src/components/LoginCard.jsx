@@ -1,80 +1,78 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-// Renders the dedicated authentication / landing screen
-export default function LoginCard({ 
-  emailInput, 
-  setEmailInput, 
-  nameInput, 
-  setNameInput, 
-  handleLogin, 
-  themeStyles 
-}) {
+function LoginCard({ currentUser, onLogin }) {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!email || !name) return alert('Please fill in both fields');
+    onLogin({ name, email, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}` });
+  };
+
+  if (currentUser) {
+    return (
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-3">
+        <div className="flex items-center space-x-3">
+          <img 
+            src={currentUser?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=default'} 
+            alt="Avatar" 
+            className="w-12 h-12 rounded-full bg-slate-700" 
+          />
+          <div className="overflow-hidden">
+            <h3 className="font-bold text-slate-100 truncate">{currentUser?.name}</h3>
+            <p className="text-xs text-slate-400 truncate">{currentUser?.email}</p>
+          </div>
+        </div>
+        <div className="pt-2 border-t border-slate-700/60 flex justify-between items-center text-xs text-indigo-400 font-medium">
+          <span>Session Status</span>
+          <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            JWT Active
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen grid lg:grid-cols-2 ${themeStyles}`}>
-      {/* Left Branding Panel */}
-      <div className="hidden lg:flex flex-col justify-between p-16 bg-gradient-to-br from-indigo-950 via-slate-900 to-black text-white relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center font-black text-2xl shadow-xl">
-              DS
-            </div>
-            <span className="text-2xl font-extrabold tracking-tight">DevSocial Hub</span>
-          </div>
-          <h1 className="text-5xl font-black tracking-tight leading-tight mb-6">
-            Connect, Collaborate & Scale Together.
-          </h1>
-          <p className="text-xl text-indigo-200/80 max-w-lg leading-relaxed">
-            The premier full-stack capstone workspace built with React, Express, and MongoDB Atlas.
-          </p>
-        </div>
-        <div className="relative z-10 text-sm text-indigo-300/60 font-medium">
-          Capstone Full-Stack Project • 2026
-        </div>
+    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-4">
+      <div>
+        <h3 className="text-lg font-bold text-slate-100">Sign In</h3>
+        <p className="text-xs text-slate-400">Access persistent developer feed</p>
       </div>
 
-      {/* Right Login Form */}
-      <div className="flex flex-col justify-center items-center p-8 sm:p-16">
-        <div className="w-full max-w-md space-y-8">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">Sign In</h2>
-            <p className="text-sm opacity-70 mt-1">Access persistent developer feed</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5 pt-2">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-80">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="developer@example.com"
-                className="w-full px-4 py-3.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-transparent text-sm transition"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-80">
-                Your Name
-              </label>
-              <input
-                type="text"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="Nawal"
-                className="w-full px-4 py-3.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-transparent text-sm transition"
-              />
-            </div>
-            <button 
-              type="submit" 
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition"
-            >
-              Enter Social Dashboard →
-            </button>
-          </form>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1">NAME</label>
+          <input 
+            type="text" 
+            placeholder="John Doe" 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+          />
         </div>
-      </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1">EMAIL</label>
+          <input 
+            type="email" 
+            placeholder="dev@example.com" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+          />
+        </div>
+
+        <button 
+          type="submit"
+          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-xl text-xs transition-colors shadow-lg shadow-indigo-600/30"
+        >
+          Sign In / Register
+        </button>
+      </form>
     </div>
   );
 }
+
+export default LoginCard;

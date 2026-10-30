@@ -1,23 +1,41 @@
 import React from 'react';
 
-// Floating Inspector displaying live backend REST endpoint activity logs
-export default function ApiDevTools({ apiLogs, onClose }) {
+function ApiDevTools({ telemetry = [] }) {
+  // Ensure telemetry is always a safe array
+  const safeTelemetry = telemetry || [];
+
   return (
-    <div className="fixed bottom-4 right-4 w-96 p-4 rounded-3xl border border-indigo-500/30 bg-black/90 text-white backdrop-blur-xl shadow-2xl z-50">
-      <div className="flex justify-between items-center mb-3">
-        <span className="text-xs font-bold text-indigo-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live MongoDB API Logs
-        </span>
-        <button onClick={onClose} className="text-xs opacity-50 hover:opacity-100">✕</button>
-      </div>
-      <div className="space-y-1.5 font-mono text-[10px] max-h-48 overflow-y-auto">
-        {apiLogs.map(log => (
-          <div key={log.id} className="p-2 rounded-xl bg-gray-900 border border-gray-800 flex justify-between">
-            <span className="text-indigo-300">{log.method} {log.endpoint}</span>
-            <span className="text-emerald-400">{log.status} ({log.time})</span>
+    <div className="bg-slate-950 border-t border-slate-800 text-slate-400 text-xs py-3 px-4">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="flex items-center space-x-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="font-semibold text-slate-300">API DevTools Telemetry</span>
+          <span className="text-slate-500">({safeTelemetry.length} requests logged)</span>
+        </div>
+
+        <div className="w-full sm:w-auto overflow-x-auto max-h-24">
+          <div className="flex space-x-2">
+            {safeTelemetry.length > 0 ? (
+              safeTelemetry.map((item) => (
+                <div 
+                  key={item.id} 
+                  className="bg-slate-900 border border-slate-800 px-2 py-1 rounded flex items-center space-x-2 whitespace-nowrap"
+                >
+                  <span className={`font-bold ${item.status < 400 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {item.method}
+                  </span>
+                  <span className="text-slate-300">{item.endpoint}</span>
+                  <span className="text-slate-500 text-[10px]">{item.timestamp}</span>
+                </div>
+              ))
+            ) : (
+              <span className="text-slate-600 italic">No API requests logged yet...</span>
+            )}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
 }
+
+export default ApiDevTools;

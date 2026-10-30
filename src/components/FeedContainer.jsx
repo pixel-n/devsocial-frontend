@@ -1,56 +1,36 @@
 import React from 'react';
-import FeedHeader from './FeedHeader';
-import CreatePostCard from './CreatePostCard';
 import PostCard from './PostCard';
+import CreatePostCard from './CreatePostCard';
 
-// Main content container housing search filters, creation form, and post stream
-export default function FeedContainer({
-  searchQuery,
-  setSearchQuery,
-  categoryFilter,
-  setCategoryFilter,
-  filteredPosts,
-  user,
-  handleCreatePost,
-  handleReact,
-  handleVote,
-  handleDeletePost,
-  handleAddComment,
-  commentInputs,
-  setCommentInputs,
-  cardStyles
-}) {
+function FeedContainer({ currentUser, posts = [], onCreatePost, onDeletePost }) {
+  // Ensure posts is always treated as a safe array
+  const safePosts = posts || [];
+
   return (
-    <div className="lg:col-span-3 space-y-6">
-      {/* Category and Search Filter */}
-      <FeedHeader 
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery} 
-        categoryFilter={categoryFilter} 
-        setCategoryFilter={setCategoryFilter} 
-        cardStyles={cardStyles} 
-      />
+    <div className="space-y-6">
+      {/* Create Post Widget */}
+      {currentUser && <CreatePostCard onCreatePost={onCreatePost} currentUser={currentUser} />}
 
-      {/* Post & Poll Creation Form */}
-      <CreatePostCard onSubmit={handleCreatePost} cardStyles={cardStyles} />
-
-      {/* Dynamic Posts Stream */}
-      <div className="space-y-6">
-        {filteredPosts.map((post) => (
-          <PostCard
-            key={post._id}
-            post={post}
-            currentUser={user}
-            onReact={handleReact}
-            onVote={handleVote}
-            onDelete={handleDeletePost}
-            onAddComment={handleAddComment}
-            commentText={commentInputs[post._id]}
-            setCommentText={(val) => setCommentInputs({ ...commentInputs, [post._id]: val })}
-            cardStyles={cardStyles}
-          />
-        ))}
+      {/* Feed Posts List */}
+      <div className="space-y-4">
+        {safePosts.length > 0 ? (
+          safePosts.map((post) => (
+            <PostCard 
+              key={post._id} 
+              post={post} 
+              currentUser={currentUser} 
+              onDeletePost={onDeletePost} 
+            />
+          ))
+        ) : (
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center text-slate-400">
+            <p className="text-sm font-medium">No posts found in this category yet.</p>
+            <p className="text-xs text-slate-500 mt-1">Be the first developer to share something!</p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+export default FeedContainer;
