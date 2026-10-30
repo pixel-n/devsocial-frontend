@@ -1,50 +1,55 @@
 import React from 'react';
 
-function Navbar({ currentUser, onLogout }) {
+function Navbar({ currentUser, onLogout, theme, setTheme }) {
   return (
-    <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
+    <header className={`${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border-b sticky top-0 z-50 shadow-md transition-colors duration-200`}>
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         
-        {/* Logo / Brand */}
+        {/* Brand / Logo */}
         <div className="flex items-center space-x-3">
-          <div className="bg-indigo-600 text-white font-bold h-10 w-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 text-xl">
+          <div className="bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white font-extrabold h-10 w-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-lg">
             DS
           </div>
           <div>
-            <span className="font-extrabold text-lg bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+            <h1 className="font-extrabold text-base bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
               DevSocial Pro
-            </span>
-            <span className="block text-xs text-slate-400">MERN Capstone Ecosystem</span>
+            </h1>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">MERN Capstone</p>
           </div>
         </div>
 
-        {/* User Info / Auth Status */}
+        {/* Actions (Theme Switcher & User Info) */}
         <div className="flex items-center space-x-4">
-          {currentUser ? (
-            <div className="flex items-center space-x-3 bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700">
-              <img 
-                src={currentUser?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=default'} 
-                alt="Avatar" 
-                className="w-8 h-8 rounded-full bg-slate-700" 
-              />
-              <div className="text-left hidden sm:block">
-                <p className="text-sm font-semibold text-slate-200 leading-none">
-                  {currentUser?.name}
-                </p>
-                <span className="text-xs text-indigo-400 font-medium">Verified Dev</span>
+          
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              theme === 'dark' 
+                ? 'bg-slate-900 border-slate-700 text-amber-400 hover:bg-slate-800' 
+                : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+            }`}
+            title="Toggle Theme"
+          >
+            {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+          </button>
+
+          {/* User Profile Info & Logout */}
+          {currentUser && (
+            <div className="flex items-center space-x-3 pl-3 border-l border-slate-700/50">
+              <div className="hidden sm:block text-left">
+                <p className="text-xs font-bold leading-tight truncate">{currentUser.name}</p>
+                <span className="text-[10px] text-emerald-400 font-medium">Verified Dev</span>
               </div>
-              <button 
+              <button
                 onClick={onLogout}
-                className="ml-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors border border-red-500/20"
+                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
               >
                 Logout
               </button>
             </div>
-          ) : (
-            <div className="text-xs text-slate-400 bg-slate-900/40 px-3 py-1.5 rounded-lg border border-slate-800">
-              Guest Session (Login via sidebar)
-            </div>
           )}
+
         </div>
 
       </div>
